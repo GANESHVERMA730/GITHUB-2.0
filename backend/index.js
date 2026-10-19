@@ -1,3 +1,11 @@
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
+const http = require("http");
+const {Server} = require("socket.io");
+
 const yargs = require('yargs');
 const { hideBin } = require("yargs/helpers");
 
@@ -8,7 +16,10 @@ const { pushRepo } = require("./controllers/push");
 const { pullRepo } = require("./controllers/pull");
 const { revertRepo } = require("./controllers/revert");
 
+dotenv.config();
+
 yargs(hideBin(process.argv))
+  .command('start', "Start a new server", {}, startServer)
   .command('init', "initialise a new repositery", {}, initRepo)
   .command(
     "add <file>",
@@ -55,3 +66,53 @@ yargs(hideBin(process.argv))
 
   .demandCommand(1, "You need at least one command")
   .help().argv;
+
+  function startServer() {
+    const app = express();
+    const port = process.env.PORT || 3000;
+
+    app.use(bodyParser.json());
+    app.use(express.json());
+
+    const mongoURL = process.env.MONGODB_URL;
+
+    mongoose.connect(mongoURL)
+    .then(()=>console.log("MongoDB connected!"))
+    .catch((err)=>console.error("Unable to connect : ", err));
+
+    app.use(cors({origin: "*"}));
+
+    app.get("/", (req, res) => {
+      res.send("Welcome!");
+    });
+
+    let user = "test";
+    const httpServer = http.createServer(app);
+    const io = new Server(httpServer, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+      },
+    });
+
+    io.on("connection", (socket) => {
+      socket.on("JoinRoom", (userID) => {
+        user = userID;
+        console.log("=====");
+        console.log(user);
+        console.log("=====");
+        socket.join(userID);
+      });
+    });
+
+    const db = mongoose.connection;
+
+    db.once("open", async () => {
+      console.log("CRUD operations called");
+      // CRUD operations
+    });
+
+    httpServer.listen(port, () => {
+      console.log(`Server is running on PORT ${port}`);
+    });
+  }
