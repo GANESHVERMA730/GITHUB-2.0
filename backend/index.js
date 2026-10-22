@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const http = require("http");
 const {Server} = require("socket.io");
+const mainRouter = require('./routes/main.router')
 
 const yargs = require('yargs');
 const { hideBin } = require("yargs/helpers");
@@ -82,9 +83,7 @@ yargs(hideBin(process.argv))
 
     app.use(cors({origin: "*"}));
 
-    app.get("/", (req, res) => {
-      res.send("Welcome!");
-    });
+    app.use("/", mainRouter);
 
     let user = "test";
     const httpServer = http.createServer(app);
