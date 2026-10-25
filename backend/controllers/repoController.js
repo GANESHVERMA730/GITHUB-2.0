@@ -2,7 +2,6 @@ const createRepository = (req, res) => {
   res.send("Repository created!");
 };
 
-
 const getAllRepositories = (req, res) => {
   res.send("All Repositories fetched!");
 };
