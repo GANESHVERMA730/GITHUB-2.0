@@ -17,40 +17,61 @@ async function connectClient() {
 
 async function signup(req, res) {
   const { username, password, email } = req.body;
-  try{
+  try {
     await connectClient();
     const db = client.db("githubclone");
     const userCollection = db.collection("users");
 
-    const user = await userCollection.findOne({username});
-    if (user){
-      return res.status(400).json({message:"User already exists!"})
+    const user = await usersCollection.findOne({ username });
+    if (user) {
+      return res.status(400).json({ message: "User already exists!" })
     }
 
-    const  salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const newUser = {
-      username, 
-      password:hashedPassword,
+      username,
+      password: hashedPassword,
       email,
-      repositories : [],
-      followedUsers : [],
-      starRepos : [],
+      repositories: [],
+      followedUsers: [],
+      starRepos: [],
     }
 
     const result = await userCollection.insertOne(newUser);
 
-    const token = jwt.sign({id:result.insertedID}, process.env.JWT_SECRET_KEY, {expiresIn:"1h"});
-    res.json({token});
-  }catch(err){
+    const token = jwt.sign({ id: result.insertedID }, process.env.JWT_SECRET_KEY, { expiresIn: "1h" });
+    res.json({ token });
+  } catch (err) {
     console.error("Error during signup : ", err.message);
     res.status(500).send("Server error");
   }
 };
 
-const login = (req, res) => {
-  res.send("Logged in!");
+async function login (req, res) {
+  const { email, password } = req.body;
+  try {
+    await connectClient();
+    const db = client.db("githubclone");
+    const userscollection = db.collection("users");
+
+    const user = await userscollection.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials!" })
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if(!isMatch){
+       return res.status(400).json({ message: "Invalid credentials!" })
+    }
+
+    const token = jwt.sign({id:user._id}, process.env.JWT_SECRET_KEY, {expiresIn:"1h"});
+    res.json({token, userId:user._id});
+  } catch(err){
+    console.error("Error during login : ", err.message);
+    res.status(500).send("server error!");
+  };
 };
 
 const getAllUsers = (req, res) => {
